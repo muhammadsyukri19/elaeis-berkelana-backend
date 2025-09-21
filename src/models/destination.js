@@ -7,11 +7,13 @@ const itineraryItemSchema = new mongoose.Schema(
 
 const destinationSchema = new mongoose.Schema(
   {
-    // id = slug unik yang dipakai FE (contoh: "bali-paradise")
     id: { type: String, required: true, unique: true, index: true },
     title: { type: String, required: true },
     description: { type: String, required: true },
-    location: { type: String, required: true },
+    // Tambahkan field negara dan provinsi
+    country: { type: String, required: true },
+    province: { type: String, required: true },
+    village: { type: String }, // Menggunakan 'village' sesuai frontend
     images: [{ type: String }],
     price: { type: Number, required: true, min: 0 },
     rating: { type: Number, required: true, min: 0, max: 5 },
@@ -23,11 +25,13 @@ const destinationSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// bantu pencarian full-text
+// Perbarui indeks pencarian untuk mencakup field baru
 destinationSchema.index({
   title: "text",
   description: "text",
-  location: "text",
+  country: "text",
+  province: "text",
+  village: "text",
 });
 
 export default mongoose.model("Destination", destinationSchema);

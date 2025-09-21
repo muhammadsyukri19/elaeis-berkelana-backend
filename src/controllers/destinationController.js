@@ -8,6 +8,8 @@ export const listDestinations = async (req, res, next) => {
       featured,
       minPrice,
       maxPrice,
+      country,
+      province,
       sort = "createdAt:-1",
       page = 1,
       limit = 12,
@@ -22,8 +24,9 @@ export const listDestinations = async (req, res, next) => {
       if (minPrice) filter.price.$gte = Number(minPrice);
       if (maxPrice) filter.price.$lte = Number(maxPrice);
     }
+    if (country) filter.country = country;
+    if (province) filter.province = province;
 
-    // parse sort: "price:1,rating:-1"
     const sortObj = {};
     String(sort)
       .split(",")
@@ -68,7 +71,6 @@ export const getDestinationById = async (req, res, next) => {
 
 export const createDestination = async (req, res, next) => {
   try {
-    // Jika admin tidak mengirim "id", kita generate dari title
     const payload = { ...req.body };
     if (!payload.id && payload.title) {
       payload.id = slugify(payload.title, { lower: true, strict: true });
@@ -83,7 +85,6 @@ export const createDestination = async (req, res, next) => {
 export const updateDestination = async (req, res, next) => {
   try {
     const payload = { ...req.body };
-    // optional: kalau title berubah dan id tidak dikirim, ikut regenerate id
     if (!payload.id && payload.title) {
       payload.id = slugify(payload.title, { lower: true, strict: true });
     }
