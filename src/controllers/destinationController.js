@@ -1,6 +1,10 @@
+// src/controllers/destinationController.js
 import Destination from "../models/destination.js";
+import Province from "../models/province.js";
 import slugify from "slugify";
 
+// Fungsi untuk mendapatkan daftar destinasi dengan berbagai filter
+// URL: GET /api/v1/destinations?provinceSlug=aceh
 export const listDestinations = async (req, res, next) => {
   try {
     const {
@@ -9,7 +13,7 @@ export const listDestinations = async (req, res, next) => {
       minPrice,
       maxPrice,
       country,
-      province,
+      provinceSlug, // Menggunakan provinceSlug dari query
       sort = "createdAt:-1",
       page = 1,
       limit = 12,
@@ -25,7 +29,23 @@ export const listDestinations = async (req, res, next) => {
       if (maxPrice) filter.price.$lte = Number(maxPrice);
     }
     if (country) filter.country = country;
-    if (province) filter.province = province;
+
+    if (provinceSlug) {
+      // Cari provinsi berdasarkan slug yang diberikan
+      const provinceDoc = await Province.findOne({ slug: provinceSlug });
+      if (provinceDoc) {
+        // Jika provinsi ditemukan, gunakan nama provinsi sebagai filter
+        filter.province = provinceDoc.name;
+      } else {
+        // Jika slug tidak ditemukan, kirim respons kosong
+        return res.json({
+          page: Number(page),
+          total: 0,
+          pages: 0,
+          items: [],
+        });
+      }
+    }
 
     const sortObj = {};
     String(sort)
@@ -59,8 +79,11 @@ export const listDestinations = async (req, res, next) => {
   }
 };
 
+// Fungsi untuk mendapatkan satu destinasi berdasarkan ID (slug)
+// URL: GET /api/v1/destinations/:id
 export const getDestinationById = async (req, res, next) => {
   try {
+    // Mencari destinasi dengan field `id` yang sesuai
     const doc = await Destination.findOne({ id: req.params.id }).lean();
     if (!doc) return res.status(404).json({ message: "Destination not found" });
     res.json(doc);
