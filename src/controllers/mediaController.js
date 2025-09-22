@@ -1,6 +1,5 @@
 // src/controllers/mediaController.js
 import Media from "../models/media.js";
-import Desa from "../models/desa.js";
 import cloudinary from "../config/cloudinary.js";
 import streamifier from "streamifier";
 import { extractYouTubeId } from "../utils/parseYoutube.js";
