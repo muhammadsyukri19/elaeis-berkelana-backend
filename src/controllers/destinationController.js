@@ -3,17 +3,12 @@ import Destination from "../models/destination.js";
 import Province from "../models/province.js";
 import slugify from "slugify";
 
-// Fungsi untuk mendapatkan daftar destinasi dengan berbagai filter
-// URL: GET /api/v1/destinations?provinceSlug=aceh
 export const listDestinations = async (req, res, next) => {
   try {
     const {
       search = "",
       featured,
-      minPrice,
-      maxPrice,
-      country,
-      provinceSlug, // Menggunakan provinceSlug dari query
+      provinceSlug,
       sort = "createdAt:-1",
       page = 1,
       limit = 12,
@@ -21,46 +16,31 @@ export const listDestinations = async (req, res, next) => {
 
     const filter = {};
     if (search) filter.$text = { $search: String(search) };
-    if (featured === "true") filter.featured = true;
-    if (featured === "false") filter.featured = false;
-    if (minPrice || maxPrice) {
-      filter.price = {};
-      if (minPrice) filter.price.$gte = Number(minPrice);
-      if (maxPrice) filter.price.$lte = Number(maxPrice);
-    }
-    if (country) filter.country = country;
+    if (featured) filter.featured = featured === "true";
 
     if (provinceSlug) {
-      // Cari provinsi berdasarkan slug yang diberikan
-      const provinceDoc = await Province.findOne({ slug: provinceSlug });
+      const provinceDoc = await Province.findOne({ slug: provinceSlug }).lean();
       if (provinceDoc) {
-        // Jika provinsi ditemukan, gunakan nama provinsi sebagai filter
-        filter.province = provinceDoc.name;
+        filter.province = provinceDoc._id;
       } else {
-        // Jika slug tidak ditemukan, kirim respons kosong
-        return res.json({
-          page: Number(page),
-          total: 0,
-          pages: 0,
-          items: [],
-        });
+        return res.json({ page: 1, total: 0, pages: 0, items: [] });
       }
     }
 
     const sortObj = {};
     String(sort)
       .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean)
       .forEach((pair) => {
-        const [field, dirRaw] = pair.split(":");
-        sortObj[field] = Number(dirRaw) === 1 ? 1 : -1;
+        const [field, dir] = pair.split(":");
+        sortObj[field] = dir === "1" ? 1 : -1;
       });
 
     const skip = (Number(page) - 1) * Number(limit);
 
     const [items, total] = await Promise.all([
       Destination.find(filter)
+        .populate("country", "name slug")
+        .populate("province", "name slug")
         .sort(sortObj)
         .skip(skip)
         .limit(Number(limit))
@@ -79,12 +59,12 @@ export const listDestinations = async (req, res, next) => {
   }
 };
 
-// Fungsi untuk mendapatkan satu destinasi berdasarkan ID (slug)
-// URL: GET /api/v1/destinations/:id
 export const getDestinationById = async (req, res, next) => {
   try {
-    // Mencari destinasi dengan field `id` yang sesuai
-    const doc = await Destination.findOne({ id: req.params.id }).lean();
+    const doc = await Destination.findOne({ slug: req.params.id })
+      .populate("country", "name slug")
+      .populate("province", "name slug")
+      .lean();
     if (!doc) return res.status(404).json({ message: "Destination not found" });
     res.json(doc);
   } catch (err) {
@@ -95,8 +75,8 @@ export const getDestinationById = async (req, res, next) => {
 export const createDestination = async (req, res, next) => {
   try {
     const payload = { ...req.body };
-    if (!payload.id && payload.title) {
-      payload.id = slugify(payload.title, { lower: true, strict: true });
+    if (payload.title) {
+      payload.slug = slugify(payload.title, { lower: true, strict: true });
     }
     const doc = await Destination.create(payload);
     res.status(201).json(doc);
@@ -108,11 +88,11 @@ export const createDestination = async (req, res, next) => {
 export const updateDestination = async (req, res, next) => {
   try {
     const payload = { ...req.body };
-    if (!payload.id && payload.title) {
-      payload.id = slugify(payload.title, { lower: true, strict: true });
+    if (payload.title) {
+      payload.slug = slugify(payload.title, { lower: true, strict: true });
     }
     const doc = await Destination.findOneAndUpdate(
-      { id: req.params.id },
+      { slug: req.params.id },
       payload,
       { new: true }
     );
@@ -125,7 +105,7 @@ export const updateDestination = async (req, res, next) => {
 
 export const deleteDestination = async (req, res, next) => {
   try {
-    const doc = await Destination.findOneAndDelete({ id: req.params.id });
+    const doc = await Destination.findOneAndDelete({ slug: req.params.id });
     if (!doc) return res.status(404).json({ message: "Destination not found" });
     res.json({ message: "Destination deleted" });
   } catch (err) {
