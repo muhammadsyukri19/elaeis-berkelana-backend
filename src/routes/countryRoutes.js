@@ -21,6 +21,6 @@ router.get("/", listCountries);
 // Admin
 router.post("/", adminAuth, upload.single("file"), createCountry); // Perbarui: Tambahkan middleware multer
 router.patch("/:id", adminAuth, updateCountry);
-router.delete("/:id", adminAuth, deleteCountry);
+router.delete("/:slug", adminAuth, deleteCountry);
 
 export default router;
